@@ -1,6 +1,6 @@
 from PyQt5 import Qt as Q
 from typing import TypedDict, List, Callable
-from core import TextCore, trigger_on_clicked
+from core import TextCore
 import core
 from functools import partial
 from utils.clipboard import get_clipboard
@@ -30,7 +30,7 @@ class MenuBar(Q.QWidget):
     def _init_ui(self):
         #  添加控件
         self.current_button_label.setText(MText.DIDNOT_SET_BUTTON)
-        if trigger_on_clicked:
+        if core.trigger_on_clicked:
             self.change_mode_button.setText(self._trigger_on_clicked_text)
         else:
             self.change_mode_button.setText(self._set_function_on_clicked_text)
@@ -48,6 +48,7 @@ class MenuBar(Q.QWidget):
         else:
             core.trigger_on_clicked = not core.trigger_on_clicked
             self.change_mode_button.setText(self._trigger_on_clicked_text)
+        print(core.trigger_on_clicked)
 
     def load_buttons_from_list(self, buttons: List[MenuButtonType]):
         """
@@ -64,12 +65,32 @@ class MenuBar(Q.QWidget):
             self.h_box.addWidget(qbtn)
 
     def on_button_clicked(self, name: str, behavior: Callable):
-        if not trigger_on_clicked:
-            self.current_button_label.setText(name)
-            TextCore.set_text_function(behavior)
+        # 设置显示当前处理函数Label和当前处理函数
+        self.current_button_label.setText(name)
+        TextCore.set_text_function(behavior)
+        print(core.trigger_on_clicked)
+        # 如果不是点击即触发模式，则设置已经完成，退出函数。
+        if not core.trigger_on_clicked:
             return
 
         # 点击即触发功能模式
         text = get_clipboard()
+
+        # 检测剪切板内容是否是文本
         if not text:
             self.parentWidget().editor.set_result_text_viewer(TextViewer.CLIPBOARD_ERROR)
+            return
+
+        # 开始执行功能
+        result = TextCore.call_text_function(text)  # 调用当前设置的文本处理函数
+
+        # 判断是否错误
+        if result is False:
+            self.parentWidget().editor.set_user_text_viewer(TextViewer.CLIPBOARD_ERROR)
+            return
+        if not isinstance(result, str):
+            self.parentWidget().editor.set_result_text_viewer(TextViewer.CHOOSE_FUNCTION_RETURN_VALUE_ERROR)
+            return
+
+        # 设置结果文本框
+        self.parentWidget().editor.set_result_text_viewer(result)
