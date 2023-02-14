@@ -1,3 +1,6 @@
+import messagebox
+
+
 class SingletonClass(object):
     def __init__(self, cls):
         self._cls = cls
