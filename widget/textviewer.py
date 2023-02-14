@@ -1,6 +1,9 @@
 from PyQt5 import Qt as Q
 from core import TextCore
 import win32clipboard
+from typing import Union
+from utils.clipboard import get_clipboard
+from text import TextViewer as Text
 
 
 class TextViewer(Q.QWidget):
@@ -74,6 +77,7 @@ class _ButtonRow(Q.QWidget):
         # 连接槽函数
         self.paste_button.clicked.connect(self._paste_and_call_func)
         self.copy_button.clicked.connect(self._copy_result_text)
+        self.paste_and_copy.clicked.connect(self._paste_and_copy_result)
 
     def _init_ui(self):
         vlayout = Q.QVBoxLayout(self)
@@ -85,30 +89,26 @@ class _ButtonRow(Q.QWidget):
         vlayout.addWidget(self.copy_button)
         vlayout.addWidget(self.paste_and_copy)
 
-    @staticmethod
-    def get_clipboard() -> str:
-        # 获取剪切板内容
-        win32clipboard.OpenClipboard()
-        text = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
-        win32clipboard.CloseClipboard()
-        return text
-
     def _paste_and_call_func(self) -> None:
         """
         仅粘贴按钮的槽函数
         """
         text_viewer = self.parentWidget()
-        text = self.get_clipboard()
-        result = TextCore.call_text_function(text)
+        text = get_clipboard()  # 判断是否获取剪切板成功
+        if not text:
+            text_viewer.set_result_text_viewer(Text.CLIPBOARD_ERROR)
+            return
+
+        result = TextCore.call_text_function(text)  # 调用当前设置的文本处理函数
 
         # 设置用户输入框
         text_viewer.set_user_text_viewer(text)
         # 非期望的输出
         if result is False:
-            self.parentWidget().set_result_text_viewer("当前没有选择处理函数，或处理函数返回的结果不是一个字符串对象")
+            self.parentWidget().set_result_text_viewer(Text.DIDNOT_CHOOSE_FUNCTION)
             return
         if not isinstance(result, str):
-            self.parentWidget().set_result_text_viewer("处理函数返回的结果不是一个字符串对象")
+            self.parentWidget().set_result_text_viewer(Text.CHOOSE_FUNCTION_RETURN_VALUE_ERROR)
             return
 
         self.parentWidget().set_result_text_viewer(result)
@@ -123,15 +123,18 @@ class _ButtonRow(Q.QWidget):
 
     def _paste_and_copy_result(self) -> None:
         text_viewer = self.parentWidget()
-        text = self.get_clipboard()
+        text = get_clipboard()  # 判断是否获取剪切板成功
+        if not text:
+            text_viewer.set_result_text_viewer(Text.CLIPBOARD_ERROR)
+            return
         text_viewer.set_user_text_viewer(text)  # 设置用户输入文本
 
         result = TextCore.call_text_function(text)
         if result is False or not isinstance(result, str):
-            self.parentWidget().set_result_text_viewer("当前没有选择处理函数，或处理函数返回的结果不是一个字符串对象")
+            self.parentWidget().set_result_text_viewer(Text.DIDNOT_CHOOSE_FUNCTION)
             return
         if not isinstance(result, str):
-            self.parentWidget().set_result_text_viewer("处理函数返回的结果不是一个字符串对象")
+            self.parentWidget().set_result_text_viewer(Text.CHOOSE_FUNCTION_RETURN_VALUE_ERROR)
             return
 
         text_viewer.disable_result_text_viewer()

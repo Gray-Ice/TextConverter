@@ -1,7 +1,10 @@
 from PyQt5 import Qt as Q
 from typing import TypedDict, List, Callable
-from core import TextCore
+from core import TextCore, trigger_on_clicked
+import core
 from functools import partial
+from utils.clipboard import get_clipboard
+from text import MenuBar as MText, TextViewer
 
 
 MenuButtonType = TypedDict("MenuButtonType", {
@@ -18,14 +21,33 @@ class MenuBar(Q.QWidget):
         super().__init__(parent)
         self.h_box = Q.QHBoxLayout(self)
         self.current_button_label = Q.QLabel(self)
+        self.change_mode_button = Q.QPushButton(self)
+        self._trigger_on_clicked_text = MText.TRIGGER_ON_CLICKED
+        self._set_function_on_clicked_text = MText.SET_FUNCTION_ON_CLICKED
         self._buttons = []
         self._init_ui()
 
     def _init_ui(self):
         #  添加控件
-        self.current_button_label.setText("当前没有选择任何功能")
+        self.current_button_label.setText(MText.DIDNOT_SET_BUTTON)
+        if trigger_on_clicked:
+            self.change_mode_button.setText(self._trigger_on_clicked_text)
+        else:
+            self.change_mode_button.setText(self._set_function_on_clicked_text)
+
+        self.change_mode_button.clicked.connect(self._change_mode)
         self.setLayout(self.h_box)  # 设置布局
         self.h_box.addWidget(self.current_button_label)
+        self.h_box.addWidget(self.change_mode_button)
+
+    def _change_mode(self):
+        """更改当前按钮的模式"""
+        if core.trigger_on_clicked:
+            core.trigger_on_clicked = not core.trigger_on_clicked
+            self.change_mode_button.setText(self._set_function_on_clicked_text)
+        else:
+            core.trigger_on_clicked = not core.trigger_on_clicked
+            self.change_mode_button.setText(self._trigger_on_clicked_text)
 
     def load_buttons_from_list(self, buttons: List[MenuButtonType]):
         """
@@ -41,9 +63,13 @@ class MenuBar(Q.QWidget):
             qbtn.clicked.connect(partial(self.on_button_clicked, name, behavior))
             self.h_box.addWidget(qbtn)
 
-
     def on_button_clicked(self, name: str, behavior: Callable):
-        self.current_button_label.setText(name)
-        TextCore.set_text_function(behavior)
+        if not trigger_on_clicked:
+            self.current_button_label.setText(name)
+            TextCore.set_text_function(behavior)
+            return
 
-
+        # 点击即触发功能模式
+        text = get_clipboard()
+        if not text:
+            self.parentWidget().editor.set_result_text_viewer(TextViewer.CLIPBOARD_ERROR)
