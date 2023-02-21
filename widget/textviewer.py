@@ -10,7 +10,7 @@ class TextViewer(Q.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self._user_text_viewer = _SubTextViewer(self)
-        self._user_text_viewer.label.setText("输入(编辑不会有任何效果)")
+        self._user_text_viewer.label.setText("输入")
         self._result_text_viewer = _SubTextViewer(self)
         self._result_text_viewer.label.setText("输出(编辑不会有任何效果)")
         self._button_row = _ButtonRow(self)
@@ -70,24 +70,28 @@ class _ButtonRow(Q.QWidget):
     """编辑器按钮列表"""
     def __init__(self, parent):
         super().__init__(parent)
+        self.uinput_button = Q.QPushButton(self)
         self.copy_button = Q.QPushButton(self)
         self.paste_button = Q.QPushButton(self)
         self.paste_and_copy = Q.QPushButton(self)
         self._init_ui()
         # 连接槽函数
+        self.uinput_button.clicked.connect(self._paste_uinput_editor_and_call_func)
         self.paste_button.clicked.connect(self._paste_and_call_func)
         self.copy_button.clicked.connect(self._copy_result_text)
         self.paste_and_copy.clicked.connect(self._paste_and_copy_result)
 
     def _init_ui(self):
         vlayout = Q.QVBoxLayout(self)
+        self.uinput_button.setText("处理输入栏的文本")
         self.paste_button.setText("粘贴剪切板并处理")
         self.copy_button.setText("复制结果")
         self.paste_and_copy.setText("粘贴剪切板并复制结果")
         self.setLayout(vlayout)
+        vlayout.addWidget(self.uinput_button)
         vlayout.addWidget(self.paste_button)
-        vlayout.addWidget(self.copy_button)
         vlayout.addWidget(self.paste_and_copy)
+        vlayout.addWidget(self.copy_button)
 
     def _paste_and_call_func(self) -> None:
         """
@@ -145,4 +149,25 @@ class _ButtonRow(Q.QWidget):
         self.parentWidget().set_result_text_viewer(result)
         text_viewer.enable_result_text_viewer()
 
+    def _paste_uinput_editor_and_call_func(self) -> None:
+        """
+        仅粘贴按钮的槽函数
+        """
+        text_viewer: TextViewer = self.parentWidget()
+        text = text_viewer.get_user_text_viewer()
+        if text is None:
+            text = ""
+        result = TextCore.call_text_function(text)  # 调用当前设置的文本处理函数
+
+        # 设置用户输入框
+        text_viewer.set_user_text_viewer(text)
+        # 非期望的输出
+        if result is False:
+            self.parentWidget().set_result_text_viewer(Text.DIDNOT_CHOOSE_FUNCTION)
+            return
+        if not isinstance(result, str):
+            self.parentWidget().set_result_text_viewer(Text.CHOOSE_FUNCTION_RETURN_VALUE_ERROR)
+            return
+
+        self.parentWidget().set_result_text_viewer(result)
 
