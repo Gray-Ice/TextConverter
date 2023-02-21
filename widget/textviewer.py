@@ -10,7 +10,7 @@ class TextViewer(Q.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self._user_text_viewer = _SubTextViewer(self)
-        self._user_text_viewer.label.setText("输入(编辑不会有任何效果)")
+        self._user_text_viewer.label.setText("输入")
         self._result_text_viewer = _SubTextViewer(self)
         self._result_text_viewer.label.setText("输出(编辑不会有任何效果)")
         self._button_row = _ButtonRow(self)
